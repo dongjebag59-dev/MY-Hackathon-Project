@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Python 3.11 설정
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -26,7 +26,7 @@ jobs:
       - name: 환경변수 설정
         run: |
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> backend/.env
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> backend/.env
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY || 'ci-test-secret-key' }}" >> backend/.env
           echo "ALGORITHM=HS256" >> backend/.env
           echo "ACCESS_TOKEN_EXPIRE_MINUTES=60" >> backend/.env
           echo "DATABASE_URL=sqlite:///./owner_bot.db" >> backend/.env
@@ -43,10 +43,10 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.EC2_HOST != ''
     steps:
       - name: EC2 배포
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
