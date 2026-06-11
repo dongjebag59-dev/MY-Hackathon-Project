@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마이페이지 - 사장봇</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#0f1e3f',
+                        steel: '#213a56',
+                        sand: '#cdaa80',
+                        camel: '#997953',
+                        cream: '#fcfaf8'
+                    },
+                    fontFamily: {
+                        sans: ['Pretendard', 'Apple SD Gothic Neo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/my_styles.css">
+</head>
+<body class="bg-cream text-navy antialiased min-h-screen flex flex-col relative overflow-x-hidden">
+
+    <div class="fixed top-[-20%] right-[-10%] w-[500px] h-[500px] bg-sand rounded-full mix-blend-multiply filter blur-[100px] opacity-20 -z-10 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-steel rounded-full mix-blend-multiply filter blur-[100px] opacity-10 -z-10 pointer-events-none"></div>
+
+    <header class="w-full relative z-10 py-5 px-6 lg:px-8 flex justify-between items-center max-w-[1000px] mx-auto border-b border-gray-200/50">
+        <a href="index.html" class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-navy rounded-lg flex items-center justify-center text-sand font-bold text-xl">S</div>
+            <span class="text-2xl font-black tracking-tight text-navy">사장봇</span>
+        </a>
+        <div class="flex gap-4 items-center">
+            <a href="generate.html" class="text-steel font-bold hover:text-navy transition px-4 py-2">콘텐츠 생성</a>
+            <button onclick="logout()" class="px-4 py-2 text-sm font-bold text-gray-500 hover:text-red-500 transition">로그아웃</button>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col px-4 lg:px-8 py-8 max-w-[1000px] mx-auto w-full z-10">
+
+        <div class="mb-8">
+            <h2 class="text-3xl font-black text-navy mb-2">마이페이지</h2>
+            <p class="text-steel font-medium">내 계정 정보와 과거에 생성한 콘텐츠를 확인하세요.</p>
+        </div>
+
+        <section class="glass-card p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 mb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div id="user-info" class="flex items-center gap-4">
+                <div id="user-avatar" class="w-16 h-16 bg-navy text-sand rounded-full flex items-center justify-center text-2xl font-black shadow-inner">
+                    ?
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <h3 id="user-name" class="text-xl font-bold text-navy">불러오는 중...</h3>
+                        <span id="user-plan" class="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-600"></span>
+                    </div>
+                    <p id="user-email" class="text-gray-500"></p>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-5 rounded-2xl border border-gray-200 w-full md:w-auto flex flex-col md:flex-row items-center gap-4 md:gap-8">
+                <div class="text-center md:text-left">
+                    <p class="text-sm font-bold text-gray-500 mb-1">현재 잔여 크레딧</p>
+                    <div class="text-3xl font-black text-navy"><span id="user-credits">-</span> <span class="text-lg font-medium text-gray-500">회</span></div>
+                </div>
+                <a href="#pricing" class="w-full md:w-auto bg-sand text-navy font-bold px-6 py-3 rounded-xl hover:bg-camel hover:text-white transition shadow-sm text-center" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'});return false;">
+                    크레딧 충전하기
+                </a>
+            </div>
+        </section>
+
+        <section class="glass-card p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-navy">최근 생성 기록</h3>
+                <span id="history-count" class="text-sm font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full">목록 불러오는 중...</span>
+            </div>
+
+            <div id="history-list" class="space-y-4"></div>
+        </section>
+
+        <section id="pricing" class="glass-card p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 mb-8">
+            <div class="mb-6">
+                <h3 class="text-2xl font-bold text-navy mb-1">크레딧 충전</h3>
+                <p class="text-steel text-sm font-medium">패키지를 선택해 크레딧을 충전하세요.</p>
+            </div>
+            <div id="credit-modal-packages" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="text-center text-gray-400 py-8 col-span-3">불러오는 중...</div>
+            </div>
+        </section>
+
+        <section class="glass-card p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 mb-8">
+            <div class="mb-6">
+                <h3 class="text-2xl font-bold text-navy mb-1">비밀번호 변경</h3>
+                <p class="text-steel text-sm font-medium">현재 비밀번호를 확인 후 새 비밀번호로 변경합니다.</p>
+            </div>
+            <div class="max-w-md space-y-4">
+                <div>
+                    <label for="current-password" class="block text-sm font-bold text-navy mb-1.5 ml-1">현재 비밀번호</label>
+                    <input type="password" id="current-password" placeholder="현재 비밀번호 입력" class="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:border-navy focus:ring-2 focus:ring-navy/20 outline-none transition text-base bg-white/70" />
+                </div>
+                <div>
+                    <label for="new-password" class="block text-sm font-bold text-navy mb-1.5 ml-1">새 비밀번호 <span class="text-gray-400 font-normal">(6자 이상)</span></label>
+                    <input type="password" id="new-password" placeholder="새 비밀번호 입력" class="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:border-navy focus:ring-2 focus:ring-navy/20 outline-none transition text-base bg-white/70" />
+                </div>
+                <div>
+                    <label for="confirm-password" class="block text-sm font-bold text-navy mb-1.5 ml-1">새 비밀번호 확인</label>
+                    <input type="password" id="confirm-password" placeholder="새 비밀번호 다시 입력" class="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:border-navy focus:ring-2 focus:ring-navy/20 outline-none transition text-base bg-white/70" />
+                </div>
+                <p id="password-message" class="text-sm font-medium hidden"></p>
+                <button onclick="changePassword()" class="w-full bg-navy text-white font-bold py-3.5 rounded-xl hover:bg-steel transition text-sm">비밀번호 변경하기</button>
+            </div>
+        </section>
+
+        <section class="glass-card p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 flex-grow">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-navy">크레딧 사용 내역</h3>
+            </div>
+            <div id="credits-list" class="space-y-2 text-sm"></div>
+        </section>
+    </main>
+
+    <div id="history-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 id="modal-title" class="text-xl font-bold text-navy">상세 보기</h3>
+                <button onclick="closeHistoryDetail()" class="text-gray-500 hover:text-navy text-2xl font-bold">×</button>
+            </div>
+            <div id="modal-body" class="p-6 overflow-y-auto whitespace-pre-wrap text-gray-700 leading-relaxed"></div>
+            <div class="p-4 border-t border-gray-200 flex gap-3 justify-end">
+                <button onclick="closeHistoryDetail()" class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-600 font-bold hover:bg-gray-50">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/history.js"></script>
+    <script src="js/mypage.js"></script>
+</body>
+</html>
