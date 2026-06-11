@@ -106,18 +106,6 @@ def change_password(
         raise HTTPException(status_code=500, detail="비밀번호 변경 중 오류가 발생했습니다.")
     return {"message": "비밀번호가 변경되었습니다."}
 
-mail_config = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=587,
-    MAIL_SERVER="smtp.gmail.com",
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True,
-)
-
-
 # 비밀번호 재설정 이메일 발송
 @router.post("/password-reset/request")
 async def request_password_reset(
@@ -170,6 +158,16 @@ async def request_password_reset(
     )
 
     try:
+        mail_config = ConnectionConfig(
+            MAIL_USERNAME=settings.MAIL_USERNAME,
+            MAIL_PASSWORD=settings.MAIL_PASSWORD,
+            MAIL_FROM=settings.MAIL_FROM or "noreply@example.com",
+            MAIL_PORT=587,
+            MAIL_SERVER="smtp.gmail.com",
+            MAIL_STARTTLS=True,
+            MAIL_SSL_TLS=False,
+            USE_CREDENTIALS=True,
+        )
         fm = FastMail(mail_config)
         await fm.send_message(message)
     except Exception:
