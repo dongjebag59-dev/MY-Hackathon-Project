@@ -169,16 +169,4 @@ MY-Hackathon-Project/
 
 ---
 
-## 팀
-
-| 이름 | 역할 |
-|---|---|
-| 유가영 | PM · AI 프롬프트 설계 · DevOps (CI/CD · EC2) |
-| 박동제 | Backend — JWT 인증 · 크레딧 시스템 · 이력 API |
-| 이제민 | Frontend — UI 구현 · 마이페이지 · 히스토리 |
-| 김정원 | Backend / Infra — EC2 배포 · nginx |
-| 유동주 | React 모바일 버전 개발 |
-
----
-
-*2팀 해커톤 프로젝트 · 2026년 5월*
+*해커톤 프로젝트 · 2026년 5월*
