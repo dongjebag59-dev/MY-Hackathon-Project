@@ -43,7 +43,8 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.EC2_HOST != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    continue-on-error: true
     steps:
       - name: EC2 배포
         uses: appleboy/ssh-action@v1.2.0
