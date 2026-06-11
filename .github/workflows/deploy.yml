@@ -40,6 +40,12 @@ jobs:
           cd backend
           python -c "from main import app; print('✅ 서버 임포트 성공')"
 
+      - name: 단위 테스트
+        run: |
+          pip install pytest
+          cd backend
+          python -m pytest tests/ -v
+
   deploy:
     needs: test
     runs-on: ubuntu-latest

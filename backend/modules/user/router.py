@@ -134,7 +134,7 @@ async def request_password_reset(
     db.add(reset_token)
     db.commit()
 
-    reset_link = f"http://13.125.46.112:8000/reset-password.html?token={token}"
+    reset_link = f"{settings.BASE_URL}/reset-password.html?token={token}"
 
     message = MessageSchema(
         subject="[사장봇] 비밀번호 재설정 링크",

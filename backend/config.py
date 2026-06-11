@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     # 환경
     ENV: str = "development"
+    BASE_URL: str = "http://localhost:8000"
 
     # 메일
     MAIL_USERNAME: str = ""

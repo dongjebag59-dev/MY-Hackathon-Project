@@ -111,16 +111,21 @@ async def stream_generate_content(data: dict):
 
 
 def check_and_deduct_credit(db: Session, current_user: User, client_ip: str):
-    """크레딧 차감 또는 비로그인 IP 체크"""
+    """크레딧 차감 또는 비로그인 IP 체크.
+    with_for_update()로 행 잠금을 획득한 후 차감 — 동시 요청 이중 차감 방지.
+    """
     if current_user:
-        updated = db.query(User).filter(
-            User.id == current_user.id,
-            User.credits > 0
-        ).update({"credits": User.credits - 1})
-        db.flush()
-        if updated == 0:
+        user = (
+            db.query(User)
+            .filter(User.id == current_user.id)
+            .with_for_update()
+            .first()
+        )
+        if not user or user.credits <= 0:
             raise HTTPException(status_code=402, detail="크레딧이 부족합니다. 충전 후 이용해 주세요.")
-        db.refresh(current_user)
+        user.credits -= 1
+        db.flush()
+        current_user.credits = user.credits
     else:
         guest_count = db.query(GuestUsage).filter(GuestUsage.ip_address == client_ip).count()
         if guest_count >= GUEST_FREE_LIMIT:
