@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from modules.user.models import PasswordResetToken, User
-from modules.user.schemas import UserRegister, Token, UserOut, PasswordChange
+from modules.user.schemas import UserRegister, Token, UserOut, PasswordChange, PasswordResetRequest, PasswordResetConfirm
 from modules.history.models import CreditTransaction, CreditTransactionType
 from modules.user import crud, service
 
@@ -109,9 +109,10 @@ def change_password(
 # 비밀번호 재설정 이메일 발송
 @router.post("/password-reset/request")
 async def request_password_reset(
-    email: str,
+    body: PasswordResetRequest,
     db: Session = Depends(get_db)
 ):
+    email = body.email
     user = crud.get_user_by_email(db, email)
     if not user:
         # 보안상 존재 여부 노출 안 함
@@ -179,12 +180,11 @@ async def request_password_reset(
 # 비밀번호 재설정 실행
 @router.post("/password-reset/confirm")
 def confirm_password_reset(
-    token: str,
-    new_password: str,
+    body: PasswordResetConfirm,
     db: Session = Depends(get_db)
 ):
     reset_token = db.query(PasswordResetToken).filter(
-        PasswordResetToken.token == token,
+        PasswordResetToken.token == body.token,
         PasswordResetToken.used == False,
         PasswordResetToken.expires_at > datetime.now(timezone.utc)
     ).first()
@@ -192,14 +192,11 @@ def confirm_password_reset(
     if not reset_token:
         raise HTTPException(status_code=400, detail="유효하지 않거나 만료된 링크입니다.")
 
-    if len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="비밀번호는 6자 이상이어야 합니다.")
-
     user = crud.get_user_by_email(db, reset_token.email)
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
-    user.hashed_password = service.hash_password(new_password)
+    user.hashed_password = service.hash_password(body.new_password)
     reset_token.used = True
     db.commit()
 

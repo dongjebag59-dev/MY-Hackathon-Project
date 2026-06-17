@@ -83,7 +83,9 @@ async def generate_content_parallel(data: dict) -> dict:
 
 
 async def stream_generate_content(data: dict):
-    """4종 콘텐츠 병렬 생성 — 완료되는 순서대로 (content_type, result) 튜플을 yield."""
+    """4종 콘텐츠 병렬 생성 — 완료되는 순서대로 (content_type, result) 튜플을 yield.
+    제너레이터가 닫히면(클라이언트 중단 포함) 미완료 태스크를 즉시 취소한다.
+    """
     kwargs = dict(
         shop_name=data.get("shop_name", ""),
         business_type=data.get("business_type", ""),
@@ -104,10 +106,17 @@ async def stream_generate_content(data: dict):
     pending = set(tasks.values())
     task_to_name = {v: k for k, v in tasks.items()}
 
-    while pending:
-        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-        for task in done:
-            yield task_to_name[task], task.result()
+    try:
+        while pending:
+            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                yield task_to_name[task], task.result()
+    finally:
+        # 클라이언트 중단 또는 예외 발생 시 미완료 OpenAI 요청 취소
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
 
 def check_and_deduct_credit(db: Session, current_user: User, client_ip: str):

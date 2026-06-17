@@ -3,7 +3,10 @@
    히스토리
    ========================================================================== */
 
-async function loadHistory() {
+const HISTORY_PAGE_SIZE = 20;
+let historyCurrentSkip = 0;
+
+async function loadHistory(skip = 0) {
     const list = document.getElementById("history-list");
     if (!list) return;
     const token = localStorage.getItem("access_token");
@@ -12,14 +15,19 @@ async function loadHistory() {
         return;
     }
 
-    try {
-        const data = await apiRequest("/history");
-        const countEl = document.getElementById("history-count");
-        if (countEl) countEl.textContent = `총 ${data.length}건`;
+    historyCurrentSkip = skip;
 
-        list.innerHTML = data.length === 0
+    try {
+        const data = await apiRequest(`/history?skip=${skip}&limit=${HISTORY_PAGE_SIZE}`);
+        const items = data.items ?? data;
+        const total = data.total ?? items.length;
+
+        const countEl = document.getElementById("history-count");
+        if (countEl) countEl.textContent = `총 ${total}건`;
+
+        list.innerHTML = items.length === 0
             ? `<p class="text-gray-500">생성 이력이 없습니다.</p>`
-            : data.map(h => {
+            : items.map(h => {
                 const date = new Date(h.created_at).toLocaleString('ko-KR');
                 return `
                 <div class="p-4 rounded-xl border border-gray-200 hover:border-navy transition bg-white/50">
@@ -38,6 +46,23 @@ async function loadHistory() {
                 </div>
             `;
             }).join("");
+
+        // 페이지네이션 버튼
+        const paginationEl = document.getElementById("history-pagination");
+        if (paginationEl) {
+            const hasPrev = skip > 0;
+            const hasNext = skip + HISTORY_PAGE_SIZE < total;
+            paginationEl.innerHTML = (hasPrev || hasNext) ? `
+                <div class="flex justify-center gap-3 mt-4">
+                    <button onclick="loadHistory(${skip - HISTORY_PAGE_SIZE})"
+                        class="px-4 py-2 text-sm font-bold rounded-lg border ${hasPrev ? 'border-navy text-navy hover:bg-navy hover:text-white' : 'border-gray-200 text-gray-300 cursor-not-allowed'} transition"
+                        ${hasPrev ? '' : 'disabled'}>← 이전</button>
+                    <span class="flex items-center text-sm text-gray-500">${Math.floor(skip / HISTORY_PAGE_SIZE) + 1} / ${Math.ceil(total / HISTORY_PAGE_SIZE)}</span>
+                    <button onclick="loadHistory(${skip + HISTORY_PAGE_SIZE})"
+                        class="px-4 py-2 text-sm font-bold rounded-lg border ${hasNext ? 'border-navy text-navy hover:bg-navy hover:text-white' : 'border-gray-200 text-gray-300 cursor-not-allowed'} transition"
+                        ${hasNext ? '' : 'disabled'}>다음 →</button>
+                </div>` : '';
+        }
     } catch (e) {
         console.error("히스토리 로드 실패", e);
     }

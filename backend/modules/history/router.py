@@ -9,17 +9,23 @@ from modules.user.models import User
 from modules.user.router import get_current_user
 from modules.generate.models import GenerationHistory
 from modules.generate import service as generate_service
-from typing import List
+from typing import List, Dict, Any
 
 router = APIRouter()
 
 
-@router.get("", response_model=List[HistoryOut])
+@router.get("", response_model=Dict[str, Any])
 def list_history(
+    skip: int = 0,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return crud.get_history_list(db, current_user.id)
+    if limit > 100:
+        limit = 100
+    items = crud.get_history_list(db, current_user.id, skip=skip, limit=limit)
+    total = crud.count_history(db, current_user.id)
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/{history_id}", response_model=HistoryOut)
@@ -56,15 +62,12 @@ async def regenerate(
     if not h or h.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="이력을 찾을 수 없습니다.")
 
-    # atomic update: credits > 0 인 경우에만 차감 (race condition 방지)
-    updated = db.query(User).filter(
-        User.id == current_user.id,
-        User.credits > 0
-    ).update({"credits": User.credits - 1})
-    db.flush()
-    if updated == 0:
+    user = db.query(User).filter(User.id == current_user.id).with_for_update().first()
+    if not user or user.credits <= 0:
         raise HTTPException(status_code=402, detail="크레딧이 부족합니다. 충전 후 이용해 주세요.")
-    db.refresh(current_user)
+    user.credits -= 1
+    db.flush()
+    current_user.credits = user.credits
 
     input_data = json.loads(h.input_payload)
     output = await generate_service.generate_content(input_data)

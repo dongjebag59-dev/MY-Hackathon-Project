@@ -38,6 +38,22 @@ class PasswordChange(BaseModel):
         return v
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_min_length(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("비밀번호는 최소 6자 이상이어야 합니다.")
+        return v
+
+
 class UserOut(BaseModel):
     id: int
     email: str
