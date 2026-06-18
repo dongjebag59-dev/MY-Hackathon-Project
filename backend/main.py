@@ -2,10 +2,12 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from database import Base, engine
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from database import Base, engine, get_db
 from api.router import api_router
 
 from modules.user.models import User
@@ -34,8 +36,12 @@ async def startup():
 app.include_router(api_router, prefix="/api")
 
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail={"status": "error", "db": str(e)})
 
 # frontend/ 폴더를 루트(/)에 마운트
 # html=True 옵션으로 index.html 자동 서빙 + /html/, /css/, /js/ 경로 모두 동작

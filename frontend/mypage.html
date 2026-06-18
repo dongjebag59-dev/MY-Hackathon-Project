@@ -79,6 +79,11 @@
                 <span id="history-count" class="text-sm font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full">목록 불러오는 중...</span>
             </div>
 
+            <div class="mb-4">
+                <input type="search" id="history-search" placeholder="가게 이름 또는 키워드로 검색..."
+                    oninput="onHistorySearch(this.value)"
+                    class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-navy focus:ring-2 focus:ring-navy/20 outline-none transition text-sm bg-white/70" />
+            </div>
             <div id="history-list" class="space-y-4"></div>
             <div id="history-pagination"></div>
         </section>

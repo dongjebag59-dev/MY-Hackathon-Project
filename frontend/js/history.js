@@ -5,6 +5,16 @@
 
 const HISTORY_PAGE_SIZE = 20;
 let historyCurrentSkip = 0;
+let historyCurrentSearch = "";
+let historySearchTimer = null;
+
+function onHistorySearch(value) {
+    clearTimeout(historySearchTimer);
+    historySearchTimer = setTimeout(() => {
+        historyCurrentSearch = value.trim();
+        loadHistory(0);
+    }, 300);
+}
 
 async function loadHistory(skip = 0) {
     const list = document.getElementById("history-list");
@@ -16,9 +26,10 @@ async function loadHistory(skip = 0) {
     }
 
     historyCurrentSkip = skip;
+    const searchParam = historyCurrentSearch ? `&search=${encodeURIComponent(historyCurrentSearch)}` : "";
 
     try {
-        const data = await apiRequest(`/history?skip=${skip}&limit=${HISTORY_PAGE_SIZE}`);
+        const data = await apiRequest(`/history?skip=${skip}&limit=${HISTORY_PAGE_SIZE}${searchParam}`);
         const items = data.items ?? data;
         const total = data.total ?? items.length;
 
@@ -57,7 +68,7 @@ async function loadHistory(skip = 0) {
                     <button onclick="loadHistory(${skip - HISTORY_PAGE_SIZE})"
                         class="px-4 py-2 text-sm font-bold rounded-lg border ${hasPrev ? 'border-navy text-navy hover:bg-navy hover:text-white' : 'border-gray-200 text-gray-300 cursor-not-allowed'} transition"
                         ${hasPrev ? '' : 'disabled'}>← 이전</button>
-                    <span class="flex items-center text-sm text-gray-500">${Math.floor(skip / HISTORY_PAGE_SIZE) + 1} / ${Math.ceil(total / HISTORY_PAGE_SIZE)}</span>
+                    <span class="flex items-center text-sm text-gray-500 px-2">${Math.floor(skip / HISTORY_PAGE_SIZE) + 1} / ${Math.ceil(total / HISTORY_PAGE_SIZE)}</span>
                     <button onclick="loadHistory(${skip + HISTORY_PAGE_SIZE})"
                         class="px-4 py-2 text-sm font-bold rounded-lg border ${hasNext ? 'border-navy text-navy hover:bg-navy hover:text-white' : 'border-gray-200 text-gray-300 cursor-not-allowed'} transition"
                         ${hasNext ? '' : 'disabled'}>다음 →</button>
@@ -72,7 +83,7 @@ async function deleteHistory(id) {
     if (!confirm("이 기록을 삭제하시겠습니까?")) return;
     try {
         await apiRequest(`/history/${id}`, { method: "DELETE" });
-        loadHistory();
+        loadHistory(historyCurrentSkip);
     } catch (e) {
         alert(e.message || "삭제에 실패했습니다.");
     }

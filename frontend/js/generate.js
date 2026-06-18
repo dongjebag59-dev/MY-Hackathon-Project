@@ -5,6 +5,8 @@
 let currentOutput = null;
 let currentTab = "blog";
 let currentHistoryId = null;
+let abortController = null;
+let editedContent = {};   // 탭별 사용자 편집 내용 보존
 
 /* ==========================================================================
    콘텐츠 생성 (SSE 스트리밍)
@@ -35,15 +37,22 @@ function resetProgressUI() {
     });
 }
 
+function cancelGeneration() {
+    if (abortController) abortController.abort();
+}
+
 async function generateContentStream(body) {
     const token = localStorage.getItem("access_token");
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
+    abortController = new AbortController();
+
     const response = await fetch("/api/generate/stream", {
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        signal: abortController.signal,
     });
 
     if (!response.ok) {
@@ -91,6 +100,8 @@ async function generateContentStream(body) {
             if (!firstContentArrived) {
                 firstContentArrived = true;
                 document.getElementById("empty-state").classList.add("hidden");
+                const editHint = document.getElementById("edit-hint");
+                if (editHint) editHint.classList.remove("hidden");
                 showTab(event.type);
             }
         }
@@ -101,6 +112,7 @@ async function generateContent(body) {
     try {
         await generateContentStream(body);
     } catch (e) {
+        if (e.name === "AbortError") return; // 사용자 취소 — 조용히 종료
         throw e;
     }
 }
@@ -110,9 +122,22 @@ async function generateContent(body) {
    ========================================================================== */
 
 function showTab(tab) {
-    currentTab = tab;
     const content = document.getElementById("tab-content");
+    // 탭 전환 전 현재 탭의 사용자 편집 내용 저장
+    if (content && currentTab && currentOutput && currentTab !== tab) {
+        const cur = content.innerText;
+        if (cur.trim()) editedContent[currentTab] = cur;
+    }
+
+    currentTab = tab;
     if (!currentOutput) return;
+
+    // 사용자가 직접 편집한 내용이 있으면 그것을 표시
+    if (editedContent[tab] !== undefined) {
+        content.innerText = editedContent[tab];
+        switchUiTab(tab);
+        return;
+    }
 
     if (tab === "blog") {
         const blog = currentOutput.blog;
@@ -346,6 +371,7 @@ async function startGeneration() {
     // 초기화
     currentOutput = null;
     currentHistoryId = null;
+    editedContent = {};
     resetProgressUI();
     document.getElementById('empty-state').classList.add('hidden');
     document.getElementById('loading-state').classList.remove('hidden');
@@ -360,6 +386,18 @@ async function startGeneration() {
 
     try {
         await generateContent(body);
+
+        if (abortController?.signal.aborted) {
+            // 사용자가 취소한 경우: 부분 생성 결과가 없으면 빈 상태 복원
+            if (!currentOutput) {
+                document.getElementById('empty-state').classList.remove('hidden');
+            }
+            document.getElementById('tab-content').insertAdjacentHTML(
+                'beforeend',
+                `<p class="text-xs text-center text-gray-400 mt-4 border-t pt-4">⚠ 생성이 취소되었습니다. 취소 시에도 크레딧 1회가 차감됩니다.</p>`
+            );
+            return;
+        }
 
         // 모든 콘텐츠 도착 후 SEO 뱃지 표시
         const badgeKeyword = document.getElementById("badge-keyword");
@@ -401,4 +439,12 @@ window.addEventListener("DOMContentLoaded", () => {
         initGeneratePage();
     }
     if (document.getElementById("history-list")) loadHistory();
+
+    // contenteditable 편집 내용을 탭별로 추적
+    const tabContent = document.getElementById("tab-content");
+    if (tabContent) {
+        tabContent.addEventListener("input", () => {
+            if (currentTab) editedContent[currentTab] = tabContent.innerText;
+        });
+    }
 });

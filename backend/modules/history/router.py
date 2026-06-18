@@ -18,14 +18,15 @@ router = APIRouter()
 def list_history(
     skip: int = 0,
     limit: int = 20,
+    search: str = "",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if limit > 100:
         limit = 100
-    items = crud.get_history_list(db, current_user.id, skip=skip, limit=limit)
-    total = crud.count_history(db, current_user.id)
-    return {"items": items, "total": total, "skip": skip, "limit": limit}
+    items = crud.get_history_list(db, current_user.id, skip=skip, limit=limit, search=search)
+    total = crud.count_history(db, current_user.id, search=search)
+    return {"items": items, "total": total, "skip": skip, "limit": limit, "search": search}
 
 
 @router.get("/{history_id}", response_model=HistoryOut)
