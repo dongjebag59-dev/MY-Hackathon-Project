@@ -29,6 +29,15 @@ def get_history_by_id(db: Session, history_id: int):
     return db.query(GenerationHistory).filter(GenerationHistory.id == history_id).first()
 
 
+def update_history_output(db: Session, history_id: int, output_payload: str):
+    history = get_history_by_id(db, history_id)
+    if history:
+        history.output_payload = output_payload
+        db.commit()
+        db.refresh(history)
+    return history
+
+
 def delete_history(db: Session, history_id: int):
     history = get_history_by_id(db, history_id)
     if history:

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from modules.history import crud
-from modules.history.schemas import HistoryOut, RegenerateOut
+from modules.history.schemas import HistoryOut, RegenerateOut, HistoryOutputUpdate
 from modules.history.models import CreditTransaction, CreditTransactionType
 from modules.user.models import User
 from modules.user.router import get_current_user
@@ -39,6 +39,20 @@ def get_history(
     if not h or h.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="이력을 찾을 수 없습니다.")
     return h
+
+
+@router.patch("/{history_id}/output", response_model=HistoryOut)
+def patch_history_output(
+    history_id: int,
+    body: HistoryOutputUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    h = crud.get_history_by_id(db, history_id)
+    if not h or h.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="이력을 찾을 수 없습니다.")
+    updated = crud.update_history_output(db, history_id, body.output_payload)
+    return updated
 
 
 @router.delete("/{history_id}", status_code=204)

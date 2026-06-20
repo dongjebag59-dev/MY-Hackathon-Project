@@ -37,3 +37,7 @@ class RegenerateOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class HistoryOutputUpdate(BaseModel):
+    output_payload: str

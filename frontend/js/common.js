@@ -1,5 +1,36 @@
 
 /* ==========================================================================
+   토스트 알림 (alert() 대체)
+   ========================================================================== */
+
+function showToast(message, type = "success") {
+    let container = document.getElementById("toast-container");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "toast-container";
+        container.className = "fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-[200] pointer-events-none";
+        document.body.appendChild(container);
+    }
+
+    const bg = type === "error" ? "bg-red-500" : type === "info" ? "bg-steel" : "bg-navy";
+    const toast = document.createElement("div");
+    toast.className = `px-5 py-3 rounded-xl shadow-xl text-sm font-bold text-white ${bg} transition-all duration-300 opacity-0 translate-y-2 pointer-events-none whitespace-nowrap`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            toast.classList.remove("opacity-0", "translate-y-2");
+        });
+    });
+
+    setTimeout(() => {
+        toast.classList.add("opacity-0", "translate-y-2");
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+/* ==========================================================================
    크레딧 소진 모달
    ========================================================================== */
 
@@ -62,7 +93,7 @@ async function chargeCreditsFromModal(packageId) {
         });
 
         closeCreditModal();
-        alert(`✅ ${data.charged}크레딧이 충전되었습니다!\n현재 잔여 크레딧: ${data.credits}회`);
+        showToast(`✅ ${data.charged}크레딧 충전 완료! 잔여 ${data.credits}회`);
 
         // 헤더 크레딧 즉시 갱신
         const creditsEl = document.getElementById("header-credits");
@@ -73,7 +104,7 @@ async function chargeCreditsFromModal(packageId) {
         if (creditEl) creditEl.textContent = data.credits;
         if (document.getElementById("credits-list")) loadCreditHistory();
     } catch (e) {
-        alert(e.message || "충전에 실패했습니다.");
+        showToast(e.message || "충전에 실패했습니다.", "error");
     }
 }
 

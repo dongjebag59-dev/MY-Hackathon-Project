@@ -237,8 +237,39 @@ function showTab(tab) {
 
 function copyContent() {
     const text = document.getElementById("tab-content").innerText;
-    navigator.clipboard.writeText(text);
-    alert("복사 완료!");
+    navigator.clipboard.writeText(text)
+        .then(() => showToast("클립보드에 복사되었습니다."))
+        .catch(() => showToast("복사에 실패했습니다.", "error"));
+}
+
+async function saveEditedContent() {
+    if (!currentHistoryId) {
+        showToast("로그인 후 생성한 콘텐츠만 저장할 수 있습니다.", "info");
+        return;
+    }
+    const content = document.getElementById("tab-content");
+    if (!content || !currentOutput) return;
+
+    // 현재 탭의 편집 내용을 currentOutput에 반영
+    const editedText = content.innerText;
+    currentOutput[currentTab] = editedText;
+    editedContent[currentTab] = editedText;
+
+    const saveBtn = document.getElementById("save-btn");
+    const originalText = saveBtn?.textContent;
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "저장 중..."; }
+
+    try {
+        await apiRequest(`/history/${currentHistoryId}/output`, {
+            method: "PATCH",
+            body: JSON.stringify({ output_payload: JSON.stringify(currentOutput) }),
+        });
+        showToast("편집 내용이 저장되었습니다.");
+    } catch (e) {
+        showToast(e.message || "저장에 실패했습니다.", "error");
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalText || "💾 저장"; }
+    }
 }
 
 async function regenerateCurrent() {
@@ -248,12 +279,16 @@ async function regenerateCurrent() {
     }
     if (!confirm("같은 정보로 재생성하시겠습니까? 크레딧 1회가 차감됩니다.")) return;
 
+    editedContent = {};
     const generateBtn = document.getElementById('generate-btn');
     const regenBtn = document.getElementById('regen-btn');
+    const saveBtn = document.getElementById('save-btn');
     generateBtn.disabled = true;
     regenBtn.disabled = true;
+    if (saveBtn) saveBtn.disabled = true;
     document.getElementById('loading-state').classList.remove('hidden');
     document.getElementById('tab-content').innerText = '';
+    document.getElementById('edit-hint')?.classList.add('hidden');
 
     try {
         const data = await apiRequest(`/history/${currentHistoryId}/regenerate`, { method: "POST" });
@@ -266,12 +301,16 @@ async function regenerateCurrent() {
         }
 
         document.getElementById('empty-state').classList.add('hidden');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.className = "flex-none bg-green-50 border-2 border-green-300 text-green-700 font-bold px-5 py-4 rounded-xl hover:bg-green-100 transition active:translate-y-1";
+        }
         showTab("blog");
     } catch (e) {
         if (e.status === 402) {
             showCreditModal(e.message || "크레딧이 부족합니다.");
         } else {
-            alert(e.message || "재생성에 실패했습니다.");
+            showToast(e.message || "재생성에 실패했습니다.", "error");
         }
     } finally {
         document.getElementById('loading-state').classList.add('hidden');
@@ -376,6 +415,7 @@ async function startGeneration() {
     document.getElementById('empty-state').classList.add('hidden');
     document.getElementById('loading-state').classList.remove('hidden');
     document.getElementById('tab-content').innerText = '';
+    document.getElementById('edit-hint')?.classList.add('hidden');
 
     const seoBar = document.getElementById("seo-badge-bar");
     if (seoBar) seoBar.classList.add("hidden");
@@ -410,14 +450,14 @@ async function startGeneration() {
         }
     } catch (e) {
         if (e.status === 403) {
-            alert(e.message || "무료 체험이 종료되었습니다. 회원가입 후 계속 이용하세요.");
-            window.location.href = "register.html";
+            showToast(e.message || "무료 체험이 종료되었습니다. 회원가입 후 계속 이용하세요.", "info");
+            setTimeout(() => window.location.href = "register.html", 2000);
             return;
         }
         if (e.status === 402) {
             showCreditModal(e.message || "크레딧이 부족합니다.");
         } else {
-            alert(e.message || "콘텐츠 생성에 실패했습니다.");
+            showToast(e.message || "콘텐츠 생성에 실패했습니다.", "error");
         }
     } finally {
         document.getElementById('loading-state').classList.add('hidden');
@@ -426,10 +466,17 @@ async function startGeneration() {
 
         const copyBtn  = document.getElementById('copy-btn');
         const regenBtn = document.getElementById('regen-btn');
+        const saveBtn  = document.getElementById('save-btn');
         copyBtn.disabled  = false;
         regenBtn.disabled = false;
         copyBtn.className  = "flex-1 bg-sand text-navy font-black py-4 rounded-xl hover:bg-camel hover:text-white transition shadow-md flex justify-center items-center gap-2 border-b-4 border-camel active:translate-y-1 active:border-b-0";
         regenBtn.className = "flex-none bg-white border-2 border-gray-200 text-gray-600 font-bold px-6 py-4 rounded-xl hover:bg-gray-50 transition active:translate-y-1";
+        if (saveBtn) {
+            saveBtn.disabled = !currentHistoryId;
+            saveBtn.className = currentHistoryId
+                ? "flex-none bg-green-50 border-2 border-green-300 text-green-700 font-bold px-5 py-4 rounded-xl hover:bg-green-100 transition active:translate-y-1"
+                : "flex-none bg-gray-200 text-gray-400 font-bold px-5 py-4 rounded-xl transition disabled:cursor-not-allowed";
+        }
     }
 }
 

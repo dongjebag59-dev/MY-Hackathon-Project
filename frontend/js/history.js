@@ -85,7 +85,7 @@ async function deleteHistory(id) {
         await apiRequest(`/history/${id}`, { method: "DELETE" });
         loadHistory(historyCurrentSkip);
     } catch (e) {
-        alert(e.message || "삭제에 실패했습니다.");
+        showToast(e.message || "삭제에 실패했습니다.", "error");
     }
 }
 
@@ -150,7 +150,7 @@ async function viewHistoryDetail(id) {
         body.textContent = text;
         modal.classList.remove("hidden");
     } catch (e) {
-        alert(e.message || "상세 조회에 실패했습니다.");
+        showToast(e.message || "상세 조회에 실패했습니다.", "error");
     }
 }
 
@@ -163,7 +163,7 @@ async function regenerateHistory(id) {
     if (!confirm("이 기록으로 재생성하시겠습니까? 크레딧 1회가 차감됩니다.")) return;
     try {
         const data = await apiRequest(`/history/${id}/regenerate`, { method: "POST" });
-        alert("재생성이 완료되었습니다.");
+        showToast("재생성이 완료되었습니다.");
         loadHistory();
         // mypage.html에서만 loadMyPage() 및 loadCreditHistory() 호출
         if (document.getElementById("user-info")) {
@@ -176,6 +176,6 @@ async function regenerateHistory(id) {
             if (creditsEl) creditsEl.textContent = `${data.credits_remaining}회`;
         }
     } catch (e) {
-        alert(e.message || "재생성에 실패했습니다.");
+        showToast(e.message || "재생성에 실패했습니다.", "error");
     }
 }
