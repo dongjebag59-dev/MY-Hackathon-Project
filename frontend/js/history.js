@@ -107,7 +107,11 @@ async function viewHistoryDetail(id) {
         if (output) {
             if (output.blog) {
                 const b = output.blog;
-                text += `📝 [블로그]\n${b.title || ""}\n\n${b.body || ""}\n\n${b.hashtags || ""}\n\n`;
+                if (typeof b === "string") {
+                    text += `📝 [블로그]\n${b}\n\n`;
+                } else {
+                    text += `📝 [블로그]\n${b.title || ""}\n\n${b.body || ""}\n\n${b.hashtags || ""}\n\n`;
+                }
             }
             if (output.review) {
                 const r = output.review;
@@ -122,7 +126,9 @@ async function viewHistoryDetail(id) {
             }
             if (output.shorts) {
                 const s = output.shorts;
-                if (s.timeline) {
+                if (typeof s === "string") {
+                    text += `📱 [쇼츠]\n${s}\n\n`;
+                } else if (s.timeline) {
                     text += `📱 [쇼츠]\n`;
                     s.timeline.forEach(cut => { text += `[${cut.time}] ${cut.caption}\n`; });
                     if (s.instagram_body) text += `\n본문: ${s.instagram_body}\n`;

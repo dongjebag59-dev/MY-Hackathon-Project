@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 from fastapi import HTTPException
-from openai import AsyncOpenAI, RateLimitError, AuthenticationError, OpenAIError
+from openai import AsyncOpenAI, RateLimitError, AuthenticationError, APIConnectionError, APITimeoutError, OpenAIError
 from sqlalchemy.orm import Session
 from config import settings
 from modules.generate.prompt_builder import (
@@ -52,11 +52,15 @@ async def _generate_single_type(content_type: str, prompt: str) -> dict:
             response_format={"type": "json_object"},
         )
     except RateLimitError:
-        return {"error": "OpenAI 크레딧 부족 또는 요청 한도 초과"}
+        return {"error": "AI 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요."}
     except AuthenticationError:
-        return {"error": "OpenAI API 키가 유효하지 않습니다"}
-    except OpenAIError as e:
-        return {"error": f"OpenAI 오류: {str(e)}"}
+        return {"error": "AI API 인증 오류입니다. 관리자에게 문의해 주세요."}
+    except APITimeoutError:
+        return {"error": "AI 서버 응답 시간이 초과되었습니다. 다시 시도해 주세요."}
+    except APIConnectionError:
+        return {"error": "AI 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."}
+    except OpenAIError:
+        return {"error": "AI 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."}
 
     raw = response.choices[0].message.content
     result = extract_json(raw)

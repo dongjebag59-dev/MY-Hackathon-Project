@@ -19,6 +19,14 @@ const PROGRESS_LABELS = {
     thumbnail: "🎨 썸네일 문구",
 };
 
+function markProgressFailed(type) {
+    const el = document.getElementById(`progress-${type}`);
+    if (!el) return;
+    el.classList.remove("bg-gray-50", "border-gray-200", "text-gray-400");
+    el.classList.add("bg-red-50", "border-red-300", "text-red-500");
+    el.innerHTML = `<span class="flex-shrink-0">✕</span><span>${PROGRESS_LABELS[type] || type} 실패</span>`;
+}
+
 function markProgressDone(type) {
     const el = document.getElementById(`progress-${type}`);
     if (!el) return;
@@ -80,6 +88,12 @@ async function generateContentStream(body) {
 
             if (event.type === "error") {
                 throw { status: 500, message: event.message || "콘텐츠 생성에 실패했습니다." };
+            }
+
+            if (event.type === "warning") {
+                markProgressFailed(event.content_type);
+                showToast(`${PROGRESS_LABELS[event.content_type] || event.content_type} 생성 실패: ${event.message}`, "error");
+                continue;
             }
 
             if (event.type === "done") {
@@ -235,11 +249,50 @@ function showTab(tab) {
     switchUiTab(tab);
 }
 
+function fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0;";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, 99999);
+    try {
+        document.execCommand("copy");
+        showToast("클립보드에 복사되었습니다.");
+    } catch {
+        showToast("복사에 실패했습니다. 직접 선택 후 복사해 주세요.", "error");
+    }
+    document.body.removeChild(ta);
+}
+
 function copyContent() {
     const text = document.getElementById("tab-content").innerText;
-    navigator.clipboard.writeText(text)
-        .then(() => showToast("클립보드에 복사되었습니다."))
-        .catch(() => showToast("복사에 실패했습니다.", "error"));
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast("클립보드에 복사되었습니다."))
+            .catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function downloadContent() {
+    const text = document.getElementById("tab-content").innerText;
+    if (!text.trim()) return;
+    const shopName = document.getElementById("shop_name")?.value || "사장봇";
+    const tabLabel = { blog: "블로그", review: "리뷰", shorts: "쇼츠", thumbnail: "썸네일" };
+    const date = new Date().toLocaleDateString("ko-KR").replace(/\.\s*/g, "-").replace(/-$/, "");
+    const filename = `${shopName}_${tabLabel[currentTab] || currentTab}_${date}.txt`;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`${filename} 다운로드 완료`);
 }
 
 async function saveEditedContent() {
@@ -316,7 +369,57 @@ async function regenerateCurrent() {
         document.getElementById('loading-state').classList.add('hidden');
         generateBtn.disabled = false;
         regenBtn.disabled = false;
+        const dlBtn = document.getElementById('download-btn');
+        if (dlBtn) {
+            dlBtn.disabled = false;
+            dlBtn.className = "flex-none bg-white border-2 border-gray-200 text-gray-600 font-bold px-4 py-4 rounded-xl hover:bg-gray-50 transition active:translate-y-1";
+        }
     }
+}
+
+/* ==========================================================================
+   generate.html - 폼 입력값 localStorage 자동 저장/복원
+   ========================================================================== */
+
+const FORM_STORAGE_KEY = "sajangbot_last_form";
+
+function saveFormToStorage() {
+    const data = {
+        shop_name:            document.getElementById("shop_name")?.value || "",
+        business_type_select: document.getElementById("business_type_select")?.value || "",
+        business_type:        document.getElementById("business_type")?.value || "",
+        region:               document.getElementById("region")?.value || "",
+        keyword:              document.getElementById("keyword")?.value || "",
+        feature:              document.getElementById("feature")?.value || "",
+        tone:                 document.getElementById("tone")?.value || "",
+    };
+    try { localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function loadFormFromStorage() {
+    try {
+        const raw = localStorage.getItem(FORM_STORAGE_KEY);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+
+        if (d.shop_name) document.getElementById("shop_name").value = d.shop_name;
+        if (d.region)    document.getElementById("region").value    = d.region;
+        if (d.keyword)   document.getElementById("keyword").value   = d.keyword;
+        if (d.feature)   document.getElementById("feature").value   = d.feature;
+        if (d.tone)      document.getElementById("tone").value      = d.tone;
+
+        const select = document.getElementById("business_type_select");
+        const input  = document.getElementById("business_type");
+        if (select && d.business_type_select) {
+            select.value = d.business_type_select;
+            if (d.business_type_select === "custom") {
+                input?.classList.remove("hidden");
+                if (input && d.business_type) input.value = d.business_type;
+            } else if (input && d.business_type) {
+                input.value = d.business_type;
+            }
+        }
+    } catch {}
 }
 
 /* ==========================================================================
@@ -398,6 +501,8 @@ async function startGeneration() {
         return;
     }
 
+    saveFormToStorage();
+
     const body = {
         shop_name:     shopName,
         business_type: typeInput.value,
@@ -464,13 +569,18 @@ async function startGeneration() {
         generateBtn.disabled = false;
         generateBtn.innerHTML = `<span>마케팅 콘텐츠 생성하기</span><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
 
-        const copyBtn  = document.getElementById('copy-btn');
-        const regenBtn = document.getElementById('regen-btn');
-        const saveBtn  = document.getElementById('save-btn');
+        const copyBtn     = document.getElementById('copy-btn');
+        const regenBtn    = document.getElementById('regen-btn');
+        const saveBtn     = document.getElementById('save-btn');
+        const downloadBtn = document.getElementById('download-btn');
         copyBtn.disabled  = false;
         regenBtn.disabled = false;
         copyBtn.className  = "flex-1 bg-sand text-navy font-black py-4 rounded-xl hover:bg-camel hover:text-white transition shadow-md flex justify-center items-center gap-2 border-b-4 border-camel active:translate-y-1 active:border-b-0";
         regenBtn.className = "flex-none bg-white border-2 border-gray-200 text-gray-600 font-bold px-6 py-4 rounded-xl hover:bg-gray-50 transition active:translate-y-1";
+        if (downloadBtn) {
+            downloadBtn.disabled = false;
+            downloadBtn.className = "flex-none bg-white border-2 border-gray-200 text-gray-600 font-bold px-4 py-4 rounded-xl hover:bg-gray-50 transition active:translate-y-1";
+        }
         if (saveBtn) {
             saveBtn.disabled = !currentHistoryId;
             saveBtn.className = currentHistoryId
@@ -484,6 +594,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // generate.html 진입 시 UI 상태 초기화 (비로그인 허용)
     if (document.getElementById("generate-btn")) {
         initGeneratePage();
+        loadFormFromStorage();
     }
     if (document.getElementById("history-list")) loadHistory();
 

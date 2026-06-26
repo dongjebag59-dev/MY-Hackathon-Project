@@ -62,6 +62,10 @@ async def generate_stream(
         results: dict = {}
         try:
             async for content_type, result in service.stream_generate_content(input_data):
+                if isinstance(result, dict) and "error" in result and len(result) == 1:
+                    # 해당 콘텐츠 타입만 실패 — 경고 전송 후 나머지는 계속
+                    yield f"data: {_json.dumps({'type': 'warning', 'content_type': content_type, 'message': result['error']}, ensure_ascii=False)}\n\n"
+                    continue
                 results[content_type] = result
                 yield f"data: {_json.dumps({'type': content_type, 'data': result}, ensure_ascii=False)}\n\n"
         except Exception as exc:
